@@ -1,4 +1,3 @@
-require("./db");
 const express = require("express");
 const multer = require("multer");
 const {
@@ -11,6 +10,7 @@ const {
 } = require("./models/Recording");
 const dotenv = require("dotenv");
 const fs = require("fs");
+require("./db");
 
 const path = require("path");
 
