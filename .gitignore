@@ -2,3 +2,4 @@ node_modules/*
 recording/*
 uploads/*
 myAudio/*
+ngrok.exe

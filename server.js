@@ -13,6 +13,54 @@ const fs = require("fs");
 require("./db");
 
 const path = require("path");
+const swaggerUi = require("swagger-ui-express");
+const cors = require("cors");
+const swaggerJSDoc = require("swagger-jsdoc");
+
+const swaggerDefinition = {
+  openapi: "3.1.0",
+  info: {
+    title: "Audio API's (RISHAB SINGLA)",
+    version: "1.0.0",
+    description: "API (RISHAB SINGLA)",
+  },
+  schemes: ["http", "https"],
+  tags: [
+    {
+      name: "User",
+      description: "Operations related to users",
+    },
+    {
+      name: "Recordings",
+      description: "Operations related to recordings",
+    },
+    {
+      name: "Segment",
+      description: "Operations related to segments",
+    },
+  ],
+  components: {
+    securitySchemes: {
+      BearerAuth: {
+        type: "http",
+        scheme: "bearer",
+        bearerFormat: "JWT",
+      },
+    },
+  },
+  security: [
+    {
+      BearerAuth: [],
+    },
+  ],
+};
+
+const options = {
+  swaggerDefinition,
+  apis: ["./server.js"],
+};
+
+const swaggerSpec = swaggerJSDoc(options);
 
 const app = express();
 app.use(express.urlencoded({ extended: true }));
@@ -46,9 +94,61 @@ const uploadFileToLocalhost = multer({
 });
 
 /**
- * multipartform data :- file(song),fileName,duration,pitchData,userId
+ * @swagger
+ * /recording/upload:
+ *   post:
+ *     summary: Adding recording.
+ *     tags : [Recordings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *               - pitchData
+ *               - userId
+ *               - duration
+ *               - fileName
+ *
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: The recording file (mp3)
+ *               userId:
+ *                 type: string
+ *                 description: The user id of the user
+ *                 example: user_1001
+ *               duration:
+ *                 type: number
+ *                 example: 65
+ *                 description: The duration of songs in seconds
+ *               fileName:
+ *                 type: string
+ *                 example: Tauba Tauba
+ *                 description: The name of the recording
+ *               timings:
+ *                 type: array
+ *                 items :
+ *                   type: object
+ *                   properties:
+ *                     time:
+ *                       type: string
+ *                       example: 0.5
+ *                     frequency:
+ *                       type: string
+ *                       example: 450.0
+ *     responses:
+ *       200:
+ *         description: Success
+ *       400:
+ *         description: Error
+ *       500:
+ *         description: Bad Request
  */
-app.post("/upload", uploadFileToLocalhost.single("file"), (req, res) => {
+app.post("/recording/upload", uploadFileToLocalhost.single("file"), (req, res) => {
   try {
     const file = req.file;
     if (!file) {
@@ -73,9 +173,29 @@ app.post("/upload", uploadFileToLocalhost.single("file"), (req, res) => {
 });
 
 /**
- * get list of recordings as per userId
+ * @swagger
+ * /recordings/get/{userId}:
+ *   get:
+ *     summary: Get all recordings for a particular user
+ *     tags: [Recordings]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: user_1001  # Example user ID for clarity
+ *         description: The user ID for fetching recordings
+ *     responses:
+ *       200:
+ *         description: A list of recordings for the user
+ *       400:
+ *         description: Invalid request
+ *       500:
+ *         description: Internal server error
  */
-app.get("/recordings/:userId", async (req, res) => {
+
+app.get("/recordings/get/:userId", async (req, res) => {
   try {
     const recordings = await Recording.find({
       userId: req.params.userId,
@@ -96,10 +216,29 @@ app.get("/recordings/:userId", async (req, res) => {
 });
 
 /**
- * get single recording data
- *
+ * @swagger
+ * /recording/get/{id}:
+ *   get:
+ *     summary: Get a single recording by ID
+ *     tags: [Recordings]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 66fd5e7336d9d03483303abe  # Example user ID for clarity
+ *         description: The unique ID of the recording
+ *     responses:
+ *       200:
+ *         description: The recording data
+ *       400:
+ *         description: Invalid request
+ *       500:
+ *         description: Internal server error
  */
-app.get("/recording/:id", async (req, res) => {
+
+app.get("/recording/get/:id", async (req, res) => {
   try {
     const recordings = await Recording.find({ _id: req.params.id }).exec();
     res.json(
@@ -118,8 +257,31 @@ app.get("/recording/:id", async (req, res) => {
 });
 
 /**
- * get single recording and give download option
- *
+ * @swagger
+ * /recording/{filename}/download:
+ *   get:
+ *     summary: Download a recording file by filename
+ *     tags: [Recordings]
+ *     parameters:
+ *       - in: path
+ *         name: filename
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: Tauba Tauba
+ *         description: The name of the recording file to download
+ *     responses:
+ *       200:
+ *         description: The requested recording file
+ *         content:
+ *           application/octet-stream:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: File not found
+ *       500:
+ *         description: Internal server error
  */
 app.get("/recording/:filename/download", (req, res) => {
   try {
@@ -138,9 +300,28 @@ app.get("/recording/:filename/download", (req, res) => {
 });
 
 /**
- * delete the recording by id
+ * @swagger
+ * /recording/delete{id}:
+ *   delete:
+ *     summary: Delete a recording by ID
+ *     tags: [Recordings]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: 66fd5e7336d9d03483303abe
+ *         description: The unique ID of the recording to delete
+ *     responses:
+ *       200:
+ *         description: Recording deleted successfully
+ *       404:
+ *         description: Recording not found
+ *       500:
+ *         description: Error deleting recording
  */
-app.delete("/recording/:id", async (req, res) => {
+app.delete("/recording/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const deletedRecording = await Recording.findByIdAndDelete(id);
@@ -153,9 +334,55 @@ app.delete("/recording/:id", async (req, res) => {
   }
 });
 
-// Create user
 /**
- * body :- fullName,email,countryCode,phoneNumber,gender,age
+ * @swagger
+ * /user/create:
+ *   post:
+ *     summary: Create a new user
+ *     tags: [User]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - email
+ *               - countryCode
+ *               - phoneNumber
+ *               - gender
+ *               - age
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 description: The full name of the user
+ *                 example: John Doe  # Example full name
+ *               email:
+ *                 type: string
+ *                 description: The email of the user
+ *                 example: johndoe@example.com  # Example email
+ *               countryCode:
+ *                 type: string
+ *                 description: The country code of the user
+ *                 example: +91  # Example country code
+ *               phoneNumber:
+ *                 type: string
+ *                 description: The phone number of the user
+ *                 example: 1234567890  # Example phone number
+ *               gender:
+ *                 type: string
+ *                 description: The gender of the user
+ *                 example: Male  # Example gender
+ *               age:
+ *                 type: number
+ *                 description: The age of the user
+ *                 example: 30  # Example age
+ *     responses:
+ *       200:
+ *         description: User created successfully
+ *       500:
+ *         description: Error creating user
  */
 app.post("/user/create", async (req, res) => {
   try {
@@ -168,9 +395,63 @@ app.post("/user/create", async (req, res) => {
   }
 });
 
-// Update User
 /**
- * body : fullName,email,countryCode,phoneNumber,gender,age
+ * @swagger
+ * /user/update/{id}:
+ *   put:
+ *     summary: Update an existing user
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: user_1234  
+ *         description: The unique ID of the user to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - fullName
+ *               - email
+ *               - countryCode
+ *               - phoneNumber
+ *               - gender
+ *               - age
+ *             properties:
+ *               fullName:
+ *                 type: string
+ *                 description: The full name of the user
+ *                 example: Jane Doe  # Example full name
+ *               email:
+ *                 type: string
+ *                 description: The email of the user
+ *                 example: janedoe@example.com  # Example email
+ *               countryCode:
+ *                 type: string
+ *                 description: The country code of the user
+ *                 example: +91  # Example country code
+ *               phoneNumber:
+ *                 type: string
+ *                 description: The phone number of the user
+ *                 example: 9876543210  # Example phone number
+ *               gender:
+ *                 type: string
+ *                 description: The gender of the user
+ *                 example: Female  # Example gender
+ *               age:
+ *                 type: number
+ *                 description: The age of the user
+ *                 example: 28  # Example age
+ *     responses:
+ *       200:
+ *         description: User updated successfully
+ *       500:
+ *         description: Error updating user
  */
 app.put("/user/update/:id", async (req, res) => {
   try {
@@ -186,7 +467,26 @@ app.put("/user/update/:id", async (req, res) => {
 });
 
 /**
- * delete the user by id
+ * @swagger
+ * /user/delete/{id}:
+ *   delete:
+ *     summary: Delete a user by ID
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: user_1234  
+ *         description: The unique ID of the user to delete
+ *     responses:
+ *       200:
+ *         description: User deleted successfully
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Error deleting user
  */
 app.delete("/user/delete/:id", async (req, res) => {
   try {
@@ -201,8 +501,27 @@ app.delete("/user/delete/:id", async (req, res) => {
   }
 });
 
-// Get user data
-//param - id of user
+/**
+ * @swagger
+ * /user/get/{id}:
+ *   get:
+ *     summary: Get user data by ID with its streak and achivements
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: user_1234  
+ *         description: The unique ID of the user to retrieve
+ *     responses:
+ *       200:
+ *         description: User data retrieved successfully
+ *       500:
+ *         description: Error getting user data
+ */
+
 app.get("/user/get/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -224,11 +543,55 @@ app.get("/user/get/:id", async (req, res) => {
   }
 });
 
-// Create Segment
 /**
- * body :- name,startTime,endTime,recordingId,userId
+ * @swagger
+ * /segment/create:
+ *   post:
+ *     summary: Create a new segment
+ *     tags: [Segment]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - startTime
+ *               - endTime
+ *               - recordingId
+ *               - userId
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The name of the segment
+ *                 example: "Segment 1"  # Example segment name
+ *               startTime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The start time of the segment(second)
+ *                 example: "20"  # Example start time
+ *               endTime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The end time of the segment(second)
+ *                 example: "50"  # Example end time
+ *               recordingId:
+ *                 type: string
+ *                 description: The ID of the recording associated with the segment
+ *                 example: "66fd5e7336d9d03483303abe"  # Example recording ID
+ *               userId:
+ *                 type: string
+ *                 description: The ID of the user creating the segment
+ *                 example: "user_1234"  # Example user ID
+ *     responses:
+ *       200:
+ *         description: Segment uploaded successfully
+ *       500:
+ *         description: Error uploading segment
  */
-app.post("/segment", async (req, res) => {
+
+app.post("/segment/create", async (req, res) => {
   try {
     const segment = new Segment({ ...req.body });
     segment.save().then((doc) => {
@@ -239,11 +602,53 @@ app.post("/segment", async (req, res) => {
   }
 });
 
-// Update Segment
 /**
- * body : name,startTime,endTime
+ * @swagger
+ * /segment/update/{id}:
+ *   put:
+ *     summary: Update an existing segment
+ *     tags: [Segment]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "66fd5e7336d9d03483303abe"  # Example segment ID
+ *         description: The unique ID of the segment to update
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - startTime
+ *               - endTime
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: The name of the segment
+ *                 example: "Evening Practice"  # Example updated segment name
+ *               startTime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The updated start time of the segment
+ *                 example: "45"  # Example updated start time
+ *               endTime:
+ *                 type: string
+ *                 format: date-time
+ *                 description: The updated end time of the segment
+ *                 example: "60"  # Example updated end time
+ *     responses:
+ *       200:
+ *         description: Segment updated successfully
+ *       500:
+ *         description: Error updating segment
  */
-app.put("/segment/:id", async (req, res) => {
+
+app.put("/segment/update/:id", async (req, res) => {
   try {
     const segment = await Segment.findByIdAndUpdate(
       req.params.id,
@@ -256,9 +661,35 @@ app.put("/segment/:id", async (req, res) => {
   }
 });
 
-// Get all segments only listing
-//param - id of recording
-app.get("/segments/:userId/:recordingId", async (req, res) => {
+/**
+ * @swagger
+ * /segments/get/{userId}/{recordingId}:
+ *   get:
+ *     summary: Get all segments for a specific recording
+ *     tags: [Segment]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "user_1001"  # Example user ID
+ *         description: The unique ID of the user
+ *       - in: path
+ *         name: recordingId
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "66fd5e7336d9d03483303abe"  # Example recording ID
+ *         description: The unique ID of the recording
+ *     responses:
+ *       200:
+ *         description: A list of segments for the given recording
+ *       500:
+ *         description: Error fetching segments
+ */
+
+app.get("/segments/get/:userId/:recordingId", async (req, res) => {
   try {
     const { recordingId } = req.params;
     const segments = await Segment.find({ recordingId, userId });
@@ -268,9 +699,29 @@ app.get("/segments/:userId/:recordingId", async (req, res) => {
   }
 });
 
-// Get segment with pitch details
-//params :- id of segment
-app.get("/segment/:id/details", async (req, res) => {
+/**
+ * @swagger
+ * /segment/get/{id}/details:
+ *   get:
+ *     summary: Get segment with pitch details
+ *     tags: [Segment]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "66fd5e7336d9d03483303abe"  # Example segment ID
+ *         description: The unique ID of the segment
+ *     responses:
+ *       200:
+ *         description: Segment with pitch details fetched successfully
+ *       404:
+ *         description: Segment or recording not found
+ *       500:
+ *         description: Error fetching segment details
+ */
+app.get("/segment/get/:id/details", async (req, res) => {
   try {
     const segment = await Segment.findById(req.params.id).exec();
 
@@ -308,9 +759,28 @@ app.get("/segment/:id/details", async (req, res) => {
 });
 
 /**
- * delete the segment by id
+ * @swagger
+ * /segment/delete/{id}:
+ *   delete:
+ *     summary: Delete a segment by ID
+ *     tags: [Segment]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "66fd5e7336d9d03483303abe"  # Example segment ID
+ *         description: The unique ID of the segment to delete
+ *     responses:
+ *       200:
+ *         description: Segment deleted successfully
+ *       404:
+ *         description: Segment not found
+ *       500:
+ *         description: Error deleting segment
  */
-app.delete("/segment/:id", async (req, res) => {
+app.delete("/segment/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
     const deletedSegment = await Segment.findByIdAndDelete(id);
@@ -323,10 +793,54 @@ app.delete("/segment/:id", async (req, res) => {
   }
 });
 
-// API to match user pitch with original recording pitch and calculate accuracy
 /**
- * body :- userId,userPitchData,recordingId
+ * @swagger
+ * /recording/comparePitch:
+ *   post:
+ *     summary: Compare user's pitch with original recording pitch and calculate accuracy
+ *     tags: [Recordings]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - userPitchData
+ *               - recordingId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: The ID of the user
+ *                 example: "user_1001"  # Example user ID
+ *               userPitchData:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     time:
+ *                       type: number
+ *                       description: Time of the pitch in seconds
+ *                       example: 2.5  # Example time
+ *                     frequency:
+ *                       type: number
+ *                       description: Frequency of the user's pitch
+ *                       example: 440.0  # Example frequency (A4 note)
+ *                 description: The pitch data of the user
+ *               recordingId:
+ *                 type: string
+ *                 description: The ID of the recording
+ *                 example: "66fd5e7336d9d03483303abe"  # Example recording ID
+ *     responses:
+ *       200:
+ *         description: Accuracy calculated and suggestions provided
+ *       404:
+ *         description: Recording not found
+ *       500:
+ *         description: Error comparing pitch data
  */
+
 app.post("/recording/comparePitch", async (req, res) => {
   try {
     const { recordingId, userPitchData } = req.body;
@@ -395,9 +909,52 @@ app.post("/recording/comparePitch", async (req, res) => {
   }
 });
 
-// API to match user pitch with original segment pitch and calculate accuracy
 /**
- * body :- userId,userPitchData,segmentId
+ * @swagger
+ * /segment/comparePitch:
+ *   post:
+ *     summary: Compare user's pitch with original segment pitch and calculate accuracy
+ *     tags: [Segment]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - userPitchData
+ *               - segmentId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *                 description: The ID of the user
+ *                 example: "user_1001"  # Example user ID
+ *               userPitchData:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     time:
+ *                       type: number
+ *                       description: Time of the pitch in seconds
+ *                       example: 2.5  # Example time
+ *                     frequency:
+ *                       type: number
+ *                       description: Frequency of the user's pitch
+ *                       example: 440.0  # Example frequency (A4 note)
+ *                 description: The pitch data of the user
+ *               segmentId:
+ *                 type: string
+ *                 description: The ID of the segment
+ *                 example: "66fd5e7336d9d03483303abe"  # Example segment ID
+ *     responses:
+ *       200:
+ *         description: Accuracy calculated and suggestions provided
+ *       404:
+ *         description: Segment or recording not found
+ *       500:
+ *         description: Error comparing pitch data
  */
 app.post("/segment/comparePitch", async (req, res) => {
   try {
@@ -476,8 +1033,28 @@ app.post("/segment/comparePitch", async (req, res) => {
   }
 });
 
-// Get all user history
-//param - id of user
+/**
+ * @swagger
+ * /userHistory/{id}:
+ *   get:
+ *     summary: Get all user riyaz history
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "user_1001"  # Example user ID
+ *         description: The ID of the user
+ *     responses:
+ *       200:
+ *         description: Returns the user history records
+ *       404:
+ *         description: User history not found
+ *       500:
+ *         description: Error fetching user history
+ */
 app.get("/userHistory/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -494,8 +1071,28 @@ app.get("/userHistory/:id", async (req, res) => {
   }
 });
 
-// Get all user achievements
-//param - id of user
+/**
+ * @swagger
+ * /userAchievements/{id}:
+ *   get:
+ *     summary: Get all user achievements
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "user_1001"  # Example user ID
+ *         description: The ID of the user
+ *     responses:
+ *       200:
+ *         description: Returns the user achievements
+ *       404:
+ *         description: User achievements not found
+ *       500:
+ *         description: Error fetching user achievements
+ */
 app.get("/userAchievements/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -512,8 +1109,28 @@ app.get("/userAchievements/:id", async (req, res) => {
   }
 });
 
-// Get all user streak data
-//param - id of user
+/**
+ * @swagger
+ * /userStreak/{id}:
+ *   get:
+ *     summary: Get all user streak data
+ *     tags: [User]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: "user_1001"  # Example user ID
+ *         description: The ID of the user
+ *     responses:
+ *       200:
+ *         description: Returns the user's streak data
+ *       404:
+ *         description: User streak data not found
+ *       500:
+ *         description: Error fetching user streak data
+ */
 app.get("/userStreak/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -744,6 +1361,8 @@ async function generatePersonalizedSuggestions(
     ];
   }
 }
+
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
