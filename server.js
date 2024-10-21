@@ -200,12 +200,13 @@ app.get("/recordings/get/:userId", async (req, res) => {
     const recordings = await Recording.find({
       userId: req.params.userId,
     }).exec();
+    console.log('recordings', recordings)
     res.json(
       recordings.map((item) => {
-        const pitchArray = JSON.parse(item.pitchData.replace(/\n/g, "").trim());
+        // const pitchArray = JSON.parse(item.pitchData.replace(/\n/g, "").trim());
         return {
           ...item._doc,
-          pitchData: pitchArray,
+          // pitchData: pitchArray,
         };
       })
     );
@@ -388,7 +389,7 @@ app.post("/user/create", async (req, res) => {
   try {
     const user = new User({ ...req.body });
     user.save().then((doc) => {
-      res.send({ message: "User created successfully" });
+      res.send({ message: "User created successfully", user: doc });
     });
   } catch (error) {
     res.status(500).json({ message: "Error creating user", error });
@@ -691,7 +692,7 @@ app.put("/segment/update/:id", async (req, res) => {
 
 app.get("/segments/get/:userId/:recordingId", async (req, res) => {
   try {
-    const { recordingId } = req.params;
+    const { recordingId, userId } = req.params;
     const segments = await Segment.find({ recordingId, userId });
     res.send(segments);
   } catch (error) {
@@ -721,6 +722,7 @@ app.get("/segments/get/:userId/:recordingId", async (req, res) => {
  *       500:
  *         description: Error fetching segment details
  */
+
 app.get("/segment/get/:id/details", async (req, res) => {
   try {
     const segment = await Segment.findById(req.params.id).exec();
@@ -780,6 +782,7 @@ app.get("/segment/get/:id/details", async (req, res) => {
  *       500:
  *         description: Error deleting segment
  */
+
 app.delete("/segment/delete/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -1131,6 +1134,7 @@ app.get("/userAchievements/:id", async (req, res) => {
  *       500:
  *         description: Error fetching user streak data
  */
+
 app.get("/userStreak/:id", async (req, res) => {
   try {
     const { id } = req.params;
@@ -1330,7 +1334,7 @@ async function generatePersonalizedSuggestions(
       return (
         originalPitch &&
         Math.abs(userPitch.frequency - originalPitch) >
-          pitchFluctuationThreshold
+        pitchFluctuationThreshold
       );
     });
 
